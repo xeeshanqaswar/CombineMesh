@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshRenderer))]
@@ -9,25 +8,24 @@ using UnityEngine;
 
 public class CombineMesh : MonoBehaviour
 {
-    #region VARIABLES DECLERATIONS
+    #region FIELDS DECLERATIONS
+    public Material material;
 
-        [SerializeField] private Material _material;
-    
-        private Vector3 _originalPosition;
-        private Quaternion _originalRotation;
-        private MeshFilter _meshFilter;
-        private MeshFilter[] _childObjMeshes;
-
-        private Mesh _combinedMesh;
-        private CombineInstance[] _childMeshInstances;
+    // Private fileds Declerations
+    private Vector3 _originalPosition;
+    private Quaternion _originalRotation;
+    private MeshFilter[] _childMeshFilters;
+    private CombineInstance[] _childMeshInstances;
+    private Transform _parent;
 
     #endregion
-    
-    
+
+
     public void CombineMeshInitiate()
     {
         Init();
         MeshCombine();
+        gameObject.GetComponent<MeshRenderer>().material = material;
     }
 
     /// <summary>
@@ -35,39 +33,46 @@ public class CombineMesh : MonoBehaviour
     /// </summary>
     private void Init()
     {
-        _childObjMeshes = GetComponentsInChildren<MeshFilter>();
-        _originalPosition = transform.position;
-        _originalRotation = transform.rotation;
-        _meshFilter = GetComponent<MeshFilter>();
-        _combinedMesh = new Mesh();
+        _parent = transform.parent; // store parent transform
+        _childMeshFilters = GetComponentsInChildren<MeshFilter>(); // initialize mesh filter array
+        _originalPosition = gameObject.transform.localPosition; // store original transform
+        _originalRotation = gameObject.transform.rotation; // store original rotation
 
-        Debug.Log($"Total Child Mesh Filters {_childObjMeshes.Length}");
+        transform.parent = null;
+        transform.position = Vector3.zero;
     }
 
-    
+
     /// <summary>
     /// Method that combine meshes in to One mesh
     /// </summary>
     private void MeshCombine()
     {
-        _childMeshInstances = new CombineInstance[_childObjMeshes.Length];
+        // Array to store child mesh filters on same subMeshIndex
+        _childMeshInstances = new CombineInstance[_childMeshFilters.Length];
 
-        for (int i = 0; i < _childObjMeshes.Length; i++)
+        for (int i = 0; i < _childMeshFilters.Length; i++)
         {
-            if (_childObjMeshes[i].transform == transform)
+            // Exclude yourslef
+            if (_childMeshFilters[i].transform == transform)
                 continue;
 
             _childMeshInstances[i].subMeshIndex = 0;
-            _childMeshInstances[i].mesh = _childObjMeshes[i].sharedMesh;
-            _childMeshInstances[i].transform = _childObjMeshes[i].transform.localToWorldMatrix;
+            _childMeshInstances[i].mesh = _childMeshFilters[i].sharedMesh;
+            _childMeshInstances[i].transform = _childMeshFilters[i].transform.localToWorldMatrix;
         }
 
-        _combinedMesh.CombineMeshes(_childMeshInstances);
-        _meshFilter.sharedMesh = _combinedMesh;
-        
-        transform.position = _originalPosition;
-        transform.rotation = _originalRotation;
-        
+        // Combine meshes from array and assign it
+        Mesh combinedMesh = new Mesh();
+        combinedMesh.CombineMeshes(_childMeshInstances);
+        GetComponent<MeshFilter>().sharedMesh = combinedMesh;
+
+
+        // Assign original transform & parent
+        transform.parent = _parent;
+        transform.localPosition = _originalPosition;
+        transform.localRotation = _originalRotation;
+
         HideChildren();
     }
 
@@ -82,6 +87,5 @@ public class CombineMesh : MonoBehaviour
             transform.GetChild(i).gameObject.SetActive(false);
         }
     }
-    
-    
+
 }
