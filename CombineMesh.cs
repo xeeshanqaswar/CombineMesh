@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshRenderer))]
@@ -67,6 +68,9 @@ public class CombineMesh : MonoBehaviour
         combinedMesh.CombineMeshes(_childMeshInstances);
         GetComponent<MeshFilter>().sharedMesh = combinedMesh;
 
+        //Generate UV for Combined Mesh
+        combinedMesh.Optimize();
+        Unwrapping.GenerateSecondaryUVSet(combinedMesh);
 
         // Assign original transform & parent
         transform.parent = _parent;
